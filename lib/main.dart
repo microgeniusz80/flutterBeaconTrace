@@ -50,18 +50,36 @@ Future<void> main() async {
 
 class DataController extends GetxController{
   String _status = '';
-
   String get status => _status;
-
   set status (String data){
     _status = data;
   }
+
+  String _major = '';
+  String get major => _major;
+  set major (String data){
+    _major = data;
+  }
+
+  String _minor = '';
+  String get minor => _minor;
+  set minor (String data){
+    _minor = data;
+  }
+
+  String _disease = '';
+  String get disease => _disease;
+  set disease (String data){
+    _disease = data;
+  }
+
 }
 
 Future<void> startScanUUID() async {
 
   SharedPreferences preferences = await SharedPreferences.getInstance();
   DataController controller = Get.put(DataController());
+  controller.major = 'empty';
   
   StreamSubscription<RangingResult>? _streamRanging;
   final _regionBeacons = <Region, List<Beacon>>{};
@@ -100,6 +118,9 @@ Future<void> startScanUUID() async {
       //print(result);
       if(result.beacons.isNotEmpty){
         print('Exposed to: ${result.beacons[0].major.toString()}, ${result.beacons[0].minor.toString()}');
+        controller.major = result.beacons[0].major.toString();
+        controller.minor = result.beacons[0].minor.toString();
+        controller.disease = result.beacons[0].proximityUUID.toString();
         await preferences.setString("nama", result.beacons[0].major.toString());
       }
       
@@ -125,6 +146,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+
+  //DataController controller = Get.find();
+  DataController controller = Get.put(DataController());
+
   
   @override
   Widget build(BuildContext context) {
@@ -136,13 +161,21 @@ class _MyAppState extends State<MyApp> {
         body: Column(
           children: [
             ElevatedButton(
-              child: const Text("show contents"),
               onPressed: () async {
                 final SharedPreferences sp = await SharedPreferences.getInstance();
                 await sp.reload();
                 print ('kandungan sharedPref: ${sp.getString('nama')}');
+                print('Major: ${controller.major.toString()}');
               },
+              child: Text(controller.major.toString()),
             ),
+            GetBuilder<DataController>(
+              builder: (controller) {
+                //return Text('Major: ${controller.major.toString()}');
+                print('Tunjuk Major: ${controller.major.toString()}');
+                return Text('Major: ${controller.major.toString()}');
+              }
+            )
           ],
         ),
       ),
