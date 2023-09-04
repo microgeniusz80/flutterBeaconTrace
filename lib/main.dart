@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bluetooth_enable_fork/bluetooth_enable_fork.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_beacon/flutter_beacon.dart';
-//import 'package:get/get.dart';
+import 'package:get/get.dart';
 
 
 Future<void> main() async {
@@ -48,9 +48,20 @@ Future<void> main() async {
   
 }
 
+class DataController extends GetxController{
+  String _status = '';
+
+  String get status => _status;
+
+  set status (String data){
+    _status = data;
+  }
+}
+
 Future<void> startScanUUID() async {
 
   SharedPreferences preferences = await SharedPreferences.getInstance();
+  DataController controller = Get.put(DataController());
   
   StreamSubscription<RangingResult>? _streamRanging;
   final _regionBeacons = <Region, List<Beacon>>{};
