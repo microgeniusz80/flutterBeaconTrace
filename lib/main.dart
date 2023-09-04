@@ -37,7 +37,6 @@ Future<void> main() async {
   }
 
   if (btPermc == PermissionStatus.granted) {
-
     BluetoothEnable.enableBluetooth.then((result) async {
       if (result == "true") {
         await startScanUUID();
@@ -48,7 +47,6 @@ Future<void> main() async {
         runApp(const MyApp());
       }
     });
-    
   }
 
   if (btPermc == PermissionStatus.denied){
@@ -59,6 +57,8 @@ Future<void> main() async {
 
 //check initstate initplatformstate supported or not later, line58 bleedit
 Future<void> startScanUUID() async {
+
+  SharedPreferences preferences = await SharedPreferences.getInstance();
   
   StreamSubscription<RangingResult>? _streamRanging;
   final _regionBeacons = <Region, List<Beacon>>{};
@@ -93,11 +93,11 @@ Future<void> startScanUUID() async {
       }
     }
 
-    _streamRanging = flutterBeacon.ranging(regions).listen((RangingResult result) {
-      print(result);
-
-      if( result.beacons.isNotEmpty){
+    _streamRanging = flutterBeacon.ranging(regions).listen((RangingResult result) async {
+      //print(result);
+      if(result.beacons.isNotEmpty){
         print('Exposed to: ${result.beacons[0].major.toString()}, ${result.beacons[0].minor.toString()}');
+        await preferences.setString("nama", result.beacons[0].major.toString());
       }
       
       _regionBeacons[result.region] = result.beacons;
@@ -109,13 +109,6 @@ Future<void> startScanUUID() async {
       
       _beacons.sort(_compareParameters);
     });
-
-    if (_beacons.isNotEmpty){
-      print('uuid: ${_beacons[0].proximityUUID.toString()}');
-    } else {
-      print('not detected');
-    }
-
   }
 
   await _scanDevices();
@@ -128,8 +121,7 @@ Future<void> initializeService() async {
   const AndroidNotificationChannel channel = AndroidNotificationChannel (
     'my_foreground', // id
     'MY FOREGROUND SERVICE', // title
-    description:
-        'This channel is used for important notifications.', // description
+    description: 'This channel is used for important notifications.', // description
     importance: Importance.low, // importance must be at low or higher level
   );
 
@@ -198,83 +190,6 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 void onStart(ServiceInstance service) async {
   // Only available for flutter 3.0.0 and later
   DartPluginRegistrant.ensureInitialized();
-  
-  //to uncomment later
-  // StreamSubscription<RangingResult>? _streamRanging;
-  // final _regionBeacons = <Region, List<Beacon>>{};
-  // final _beacons = <Beacon>[];
-
-  // int _compareParameters(Beacon a, Beacon b) {
-  //   int compare = a.proximityUUID.compareTo(b.proximityUUID);
-  //   print('meow4');
-  //   if (compare == 0) {
-  //     compare = a.major.compareTo(b.major);
-  //   }
-
-  //   if (compare == 0) {
-  //     compare = a.minor.compareTo(b.minor);
-  //   }
-
-  //   return compare;
-  // }
-        
-  // Future _scanDevices() async {
-    
-  //   final regions = <Region>[
-
-  //     Region(
-  //       identifier: 'Covid-19',
-  //       proximityUUID: 'CB10023F-A318-3394-4199-A8730C7C1AEC',
-  //     ),
-  //     Region(
-  //       identifier: 'Influenza A',
-  //       proximityUUID: '6a84c716-0f2a-1ce9-f210-6a63bd873dd9',
-  //     ),
-  //     Region(
-  //       identifier: 'Testing',
-  //       proximityUUID: 'CB10023F-A318-3394-4199-A8730C7C1AED',
-  //     ),
-  //   ];
-
-  //   if (_streamRanging != null) {
-  //     if (_streamRanging!.isPaused) {
-  //       _streamRanging?.resume();
-  //       print('meowing5');
-  //       return;
-  //     }
-  //   }
-
-  //   print('ilyas start scan');
-
-  //   _streamRanging =
-  //       flutterBeacon.ranging(regions).listen((RangingResult result) {
-  //     print(result);
-      
-  //     _regionBeacons[result.region] = result.beacons;
-  //     print('meow6');
-  //         _beacons.clear();
-  //         _regionBeacons.values.forEach((list) {
-  //           _beacons.addAll(list);
-  //         });
-  //         print('meow7');
-  //         _beacons.sort(_compareParameters);
-  //   });
-
-  //   if (_beacons.isNotEmpty){
-  //     print('uuid: ${_beacons[0].proximityUUID.toString()}');
-  //   } else {
-  //     print('not detected');
-  //   }
-
-  //   print('ilyas done scan'); 
-  // }
-
-  // print('i am starting scan again and again');
-  // _scanDevices();
-
-
-  SharedPreferences preferences = await SharedPreferences.getInstance();
-  await preferences.setString("hello", "world");
 
   /// OPTIONAL when use custom notification
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -297,21 +212,13 @@ void onStart(ServiceInstance service) async {
 
   // bring to foreground
   Timer.periodic(const Duration(seconds: 10), (timer) async {
-    print('firing through timer');
 
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
         print('timer firing every 10 sec');
-
-        Future _scanDevices() async {
-         print('kedua');
-        }
       }
-
     }
-    //to uncomment
-    //_scanDevices();
-    /// OPTIONAL for use custom notification
+
     /// the notification id must be equals with AndroidConfiguration when you call configure() method.
     flutterLocalNotificationsPlugin.show (
       888,
@@ -327,16 +234,7 @@ void onStart(ServiceInstance service) async {
       ),
     );
 
-        // if you don't using custom notification, uncomment this
-        // service.setForegroundNotificationInfo(
-        //   title: "My App Service",
-        //   content: "Updated at ${DateTime.now()}",
-        // );
-      
   });
-
-    /// you can see this log in logcat
-  print('FLUTTER BACKGROUND SERVICE: ${DateTime.now()}');
 
   // test using external plugin
   final deviceInfo = DeviceInfoPlugin();
@@ -368,20 +266,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // FlutterBluePlus flutterBlue = FlutterBluePlus.instance;
-
-  // Future _scanDevices() async {
-  //   print("scan started");
-  //   flutterBlue.startScan(timeout: const Duration(seconds: 4));
-
-  //   var subscription = flutterBlue.scanResults.listen((results) {
-  //       // do something with scan results
-  //       for (ScanResult r in results) {
-  //           print('${r.advertisementData.serviceUuids.toString()} found!');
-  //       }
-  //   });
-  //   flutterBlue.stopScan();
-  // }
   
   String text = "Stop Service";
   @override
@@ -426,9 +310,11 @@ class _MyAppState extends State<MyApp> {
               },
             ),
             ElevatedButton(
-              child: const Text("Scan Bluetooth"),
-              onPressed: () {
-                //_scanDevices();
+              child: const Text("show contents"),
+              onPressed: () async {
+                final SharedPreferences sp = await SharedPreferences.getInstance();
+                await sp.reload();
+                print ('kandungan sharedPref: ${sp.getString('nama')}');
               },
             ),
             ElevatedButton(
@@ -449,10 +335,7 @@ class _MyAppState extends State<MyApp> {
                 }
                 setState(() {});
               },
-            ),
-            const Expanded(
-              child: LogView(),
-            ),
+            )
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -460,49 +343,6 @@ class _MyAppState extends State<MyApp> {
           child: const Icon(Icons.play_arrow),
         ),
       ),
-    );
-  }
-}
-
-class LogView extends StatefulWidget {
-  const LogView({Key? key}) : super(key: key);
-
-  @override
-  State<LogView> createState() => _LogViewState();
-}
-
-class _LogViewState extends State<LogView> {
-  late final Timer timer;
-  List<String> logs = [];
-
-  @override
-  void initState() {
-    super.initState();
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final SharedPreferences sp = await SharedPreferences.getInstance();
-      await sp.reload();
-      print('sharedpreferences stuff');
-      logs = sp.getStringList('log') ?? [];
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: logs.length,
-      itemBuilder: (context, index) {
-        final log = logs.elementAt(index);
-        return Text(log);
-      },
     );
   }
 }
