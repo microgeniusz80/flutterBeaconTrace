@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -11,8 +10,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:bluetooth_enable_fork/bluetooth_enable_fork.dart';
-
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_beacon/flutter_beacon.dart';
 import 'package:get/get.dart';
@@ -27,32 +24,31 @@ Future<void> main() async {
   PermissionStatus btPermc = await Permission.locationWhenInUse.request();
   PermissionStatus btPermd = await Permission.bluetoothAdvertise.request();
 
+  print('${btPerm}'' - bluetooth');
   print('${btPerma}'' - bluetooth');
   print('${btPermb}'' - location');
   print('${btPermc}'' - location when in use');
+  print('${btPermd}'' - advertise bluetooth');
 
   try {
-      await flutterBeacon.initializeAndCheckScanning;
-      print('dah check exception');
-    } on PlatformException catch(e) {
-      print(e.message.toString());
+    await flutterBeacon.initializeAndCheckScanning;
+  } 
+  on PlatformException catch(e) {
+    print(e.message.toString());
   }
 
-  if (btPermc == PermissionStatus.granted){
-    print('can proceed...');
+  if (btPermc == PermissionStatus.granted) {
 
     BluetoothEnable.enableBluetooth.then((result) async {
-    if (result == "true") {
-      print('advertisement started');
-      await getPermissions();
-      await initializeService();
-      runApp(const MyApp());
-    }
-    else if (result == "false") {
-      print('not ok');
-      runApp(const MyApp());
-    }
-  });
+      if (result == "true") {
+        await startScanUUID();
+        await initializeService();
+        runApp(const MyApp());
+      } else if (result == "false") {
+        print('Bluetooth not enabled');
+        runApp(const MyApp());
+      }
+    });
     
   }
 
@@ -60,12 +56,10 @@ Future<void> main() async {
     print('permission denied...');
   }
   
-  
 }
 
 //check initstate initplatformstate supported or not later, line58 bleedit
-
-Future<void> getPermissions() async {
+Future<void> startScanUUID() async {
   
   StreamSubscription<RangingResult>? _streamRanging;
   final _regionBeacons = <Region, List<Beacon>>{};
@@ -86,22 +80,11 @@ Future<void> getPermissions() async {
   }
 
   Future _scanDevices() async {
-    
-    
     final regions = <Region>[
-
       Region(
-        identifier: 'Covid-19',
-        proximityUUID: 'CB10023F-A318-3394-4199-A8730C7C1AEC',
-      ),
-      Region(
-        identifier: 'Influenza A',
-        proximityUUID: '6a84c716-0f2a-1ce9-f210-6a63bd873dd9',
-      ),
-      Region(
-        identifier: 'Testing',
-        proximityUUID: 'CB10023F-A318-3394-4199-A8730C7C1AED',
-      ),
+        identifier: 'Contact Trace',
+        proximityUUID: 'CB10023F-A318-3394-4199-A8730C7C1AE0',
+      )
     ];
 
     if (_streamRanging != null) {
@@ -111,26 +94,21 @@ Future<void> getPermissions() async {
       }
     }
 
-    print('ilyas start scan');
-
-    _streamRanging =
-        flutterBeacon.ranging(regions).listen((RangingResult result) {
-      
+    _streamRanging = flutterBeacon.ranging(regions).listen((RangingResult result) {
       print(result);
+
       if( result.beacons.isNotEmpty){
-        print('Inilah bantuan Allah: ${result.beacons[0].proximityUUID.toString()}');
+        print('Exposed to: ${result.beacons[0].major.toString()}, ${result.beacons[0].minor.toString()}');
       }
       
-      print('meow1');
-      
       _regionBeacons[result.region] = result.beacons;
-          _beacons.clear();
-          _regionBeacons.values.forEach((list) {
-            _beacons.addAll(list);
-            print('meow2');
-          });
-          _beacons.sort(_compareParameters);
-          print('meow3');
+      _beacons.clear();
+
+      _regionBeacons.values.forEach((list) {
+        _beacons.addAll(list);
+      });
+      
+      _beacons.sort(_compareParameters);
     });
 
     if (_beacons.isNotEmpty){
@@ -139,7 +117,6 @@ Future<void> getPermissions() async {
       print('not detected');
     }
 
-    print('ilyas done scan'); 
   }
 
   await _scanDevices();
@@ -149,7 +126,7 @@ Future<void> initializeService() async {
   final service = FlutterBackgroundService();
 
   /// OPTIONAL, using custom notification channel id
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  const AndroidNotificationChannel channel = AndroidNotificationChannel (
     'my_foreground', // id
     'MY FOREGROUND SERVICE', // title
     description:
@@ -183,7 +160,7 @@ Future<void> initializeService() async {
       isForegroundMode: true,
 
       notificationChannelId: 'my_foreground',
-      initialNotificationTitle: 'AWESOME SERVICE',
+      initialNotificationTitle: 'Contact Tracing',
       initialNotificationContent: 'Initializing',
       foregroundServiceNotificationId: 888,
     ),
@@ -201,9 +178,6 @@ Future<void> initializeService() async {
 
   service.startService();
 }
-
-// to ensure this is executed
-// run app from xcode, then from xcode menu, select Simulate Background Fetch
 
 @pragma('vm:entry-point')
 Future<bool> onIosBackground(ServiceInstance service) async {
@@ -328,23 +302,22 @@ void onStart(ServiceInstance service) async {
 
     if (service is AndroidServiceInstance) {
       if (await service.isForegroundService()) {
-        
+        print('timer firing every 10 sec');
+
         Future _scanDevices() async {
          print('kedua');
         }
       }
 
     }
-
-    print('yg ni plak');
-//to uncomment
+    //to uncomment
     //_scanDevices();
     /// OPTIONAL for use custom notification
     /// the notification id must be equals with AndroidConfiguration when you call configure() method.
-    flutterLocalNotificationsPlugin.show(
+    flutterLocalNotificationsPlugin.show (
       888,
-      'COOL SERVICE',
-      'Awesome ${DateTime.now()}',
+      'Contact Tracing',
+      'Time: ${DateTime.now()}',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'my_foreground',
@@ -363,11 +336,8 @@ void onStart(ServiceInstance service) async {
       
   });
 
-    
-
     /// you can see this log in logcat
   print('FLUTTER BACKGROUND SERVICE: ${DateTime.now()}');
-  print('ni boleh namapk  ke');
 
   // test using external plugin
   final deviceInfo = DeviceInfoPlugin();
@@ -399,20 +369,20 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  FlutterBluePlus flutterBlue = FlutterBluePlus.instance;
+  // FlutterBluePlus flutterBlue = FlutterBluePlus.instance;
 
-  Future _scanDevices() async {
-    print("scan started");
-    flutterBlue.startScan(timeout: const Duration(seconds: 4));
+  // Future _scanDevices() async {
+  //   print("scan started");
+  //   flutterBlue.startScan(timeout: const Duration(seconds: 4));
 
-    var subscription = flutterBlue.scanResults.listen((results) {
-        // do something with scan results
-        for (ScanResult r in results) {
-            print('${r.advertisementData.serviceUuids.toString()} found!');
-        }
-    });
-    flutterBlue.stopScan();
-  }
+  //   var subscription = flutterBlue.scanResults.listen((results) {
+  //       // do something with scan results
+  //       for (ScanResult r in results) {
+  //           print('${r.advertisementData.serviceUuids.toString()} found!');
+  //       }
+  //   });
+  //   flutterBlue.stopScan();
+  // }
   
   String text = "Stop Service";
   @override
@@ -459,7 +429,7 @@ class _MyAppState extends State<MyApp> {
             ElevatedButton(
               child: const Text("Scan Bluetooth"),
               onPressed: () {
-                _scanDevices();
+                //_scanDevices();
               },
             ),
             ElevatedButton(
@@ -512,6 +482,7 @@ class _LogViewState extends State<LogView> {
     timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       final SharedPreferences sp = await SharedPreferences.getInstance();
       await sp.reload();
+      print('sharedpreferences stuff');
       logs = sp.getStringList('log') ?? [];
       if (mounted) {
         setState(() {});
