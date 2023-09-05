@@ -33,6 +33,7 @@ Future<void> main() async {
   if (btPermc == PermissionStatus.granted) {
     BluetoothEnable.enableBluetooth.then((result) async {
       if (result == "true") {
+        await broadcastUUID();
         await startScanUUID();
         runApp(const MyApp());
       } else if (result == "false") {
@@ -77,6 +78,87 @@ class DataController extends GetxController{
     update();
   }
 
+}
+
+class RequirementStateController extends GetxController {
+  var bluetoothState = BluetoothState.stateOff.obs;
+  var authorizationStatus = AuthorizationStatus.notDetermined.obs;
+  var locationService = false.obs;
+
+  var _startBroadcasting = false.obs;
+  var _startScanning = false.obs;
+  var _pauseScanning = false.obs;
+
+  bool get bluetoothEnabled => bluetoothState.value == BluetoothState.stateOn;
+  bool get authorizationStatusOk =>
+      authorizationStatus.value == AuthorizationStatus.allowed ||
+      authorizationStatus.value == AuthorizationStatus.always;
+  bool get locationServiceEnabled => locationService.value;
+
+  updateBluetoothState(BluetoothState state) {
+    bluetoothState.value = state;
+  }
+
+  updateAuthorizationStatus(AuthorizationStatus status) {
+    authorizationStatus.value = status;
+  }
+
+  updateLocationService(bool flag) {
+    locationService.value = flag;
+  }
+
+  startBroadcasting() {
+    _startBroadcasting.value = true;
+  }
+
+  stopBroadcasting() {
+    _startBroadcasting.value = false;
+  }
+
+  startScanning() {
+    _startScanning.value = true;
+    _pauseScanning.value = false;
+  }
+
+  pauseScanning() {
+    _startScanning.value = false;
+    _pauseScanning.value = true;
+  }
+
+  Stream<bool> get startBroadcastStream {
+    return _startBroadcasting.stream;
+  }
+
+  Stream<bool> get startStream {
+    return _startScanning.stream;
+  }
+
+  Stream<bool> get pauseStream {
+    return _pauseScanning.stream;
+  }
+}
+
+Future<void> broadcastUUID() async {
+  //final controller = Get.find<RequirementStateController>();
+
+  //check all requirements are met before broadcast
+  // bool broadcastReady =>
+  //     controller.authorizationStatusOk == true &&
+  //     controller.locationServiceEnabled == true &&
+  //     controller.bluetoothEnabled == true;
+
+  //final regexUUID = RegExp(r'[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}');
+  const uuidController ='CB10023F-A318-3394-4199-A8730C7C1AEC';
+  const majorController = '1';
+  const minorController = '2';
+
+  await flutterBeacon.initializeScanning;
+
+  await flutterBeacon.startBroadcast(BeaconBroadcast(
+            proximityUUID: uuidController,
+            major: int.tryParse(majorController) ?? 0,
+            minor: int.tryParse(minorController) ?? 0,
+          ));
 }
 
 Future<void> startScanUUID() async {
