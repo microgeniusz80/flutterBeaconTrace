@@ -53,24 +53,28 @@ class DataController extends GetxController{
   String get status => _status;
   set status (String data){
     _status = data;
+    update();
   }
 
   String _major = '';
   String get major => _major;
   set major (String data){
     _major = data;
+    update();
   }
 
   String _minor = '';
   String get minor => _minor;
   set minor (String data){
     _minor = data;
+    update();
   }
 
   String _disease = '';
   String get disease => _disease;
   set disease (String data){
     _disease = data;
+    update();
   }
 
 }
@@ -148,7 +152,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
 
   //DataController controller = Get.find();
-  DataController controller = Get.put(DataController());
+  DataController controller = Get.find();
 
   
   @override
@@ -164,15 +168,13 @@ class _MyAppState extends State<MyApp> {
               onPressed: () async {
                 final SharedPreferences sp = await SharedPreferences.getInstance();
                 await sp.reload();
-                print ('kandungan sharedPref: ${sp.getString('nama')}');
-                print('Major: ${controller.major.toString()}');
+                // print ('kandungan sharedPref: ${sp.getString('nama')}');
+                // print('Major: ${controller.major.toString()}');
               },
               child: Text(controller.major.toString()),
             ),
             GetBuilder<DataController>(
               builder: (controller) {
-                //return Text('Major: ${controller.major.toString()}');
-                print('Tunjuk Major: ${controller.major.toString()}');
                 return Text('Major: ${controller.major.toString()}');
               }
             )
