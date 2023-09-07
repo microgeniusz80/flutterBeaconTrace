@@ -6,6 +6,7 @@ import 'package:bluetooth_enable_fork/bluetooth_enable_fork.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_beacon/flutter_beacon.dart';
 import 'package:get/get.dart';
+import 'dart:math';
 
 
 Future<void> main() async {
@@ -33,7 +34,8 @@ Future<void> main() async {
   if (btPermc == PermissionStatus.granted) {
     BluetoothEnable.enableBluetooth.then((result) async {
       if (result == "true") {
-        await broadcastUUID();
+        await flutterBeacon.initializeScanning;
+        //await broadcastUUID();
         await startScanUUID();
         runApp(const MyApp());
       } else if (result == "false") {
@@ -50,6 +52,14 @@ Future<void> main() async {
 }
 
 class DataController extends GetxController{
+  String? selfmajor;
+  String? selfminor;
+
+  DataController(){
+    selfmajor = random(1, 65535).toString();
+    selfminor = random(1, 65535).toString();
+  }
+
   String _status = '';
   String get status => _status;
   set status (String data){
@@ -78,20 +88,56 @@ class DataController extends GetxController{
     update();
   }
 
+  String _infection = '';
+  String get infection => _infection;
+  set infection (String data){
+    _infection = data;
+    update();
+  }
+
+  int random(int min, int max) {
+    return min + Random().nextInt(max - min);
+  }
+
 }
 
 Future<void> broadcastUUID() async {
-  const uuidController ='CB10023F-A318-3394-4199-A8730C7C1AEC';
-  const majorController = '1';
-  const minorController = '2';
 
-  await flutterBeacon.initializeScanning;
+  //await flutterBeacon.initializeScanning;
+  bool isBroadcasting = await flutterBeacon.isBroadcasting();
 
-  await flutterBeacon.startBroadcast(BeaconBroadcast(
-            proximityUUID: uuidController,
-            major: int.tryParse(majorController) ?? 0,
-            minor: int.tryParse(minorController) ?? 0,
-          ));
+  const covid = 'CB10023F-A318-3394-4199-A8730C7C1AE0';
+  // const influenza = 'CB10023F-A318-3394-4199-A8730C7C1001';
+  // const chickenpox = 'CB10023F-A318-3394-4199-A8730C7C1002';
+  // const healthy = 'CB10023F-A318-3394-4199-A8730C7C1AEC';
+
+  int random(int min, int max) {
+    return min + Random().nextInt(max - min);
+  }
+
+  var uuidController = covid;
+  var majorController = random(1, 65535).toString();
+  var minorController = random(1, 65535).toString();
+
+  print('broadcasting ke: ${isBroadcasting}');
+
+  if (isBroadcasting) {
+    await flutterBeacon.stopBroadcast();
+    Timer(const Duration(seconds: 3), () async {
+      await flutterBeacon.startBroadcast(BeaconBroadcast(
+        proximityUUID: uuidController,
+        major: int.tryParse(majorController) ?? 0,
+        minor: int.tryParse(minorController) ?? 0,
+      ));
+    });
+  } else {
+    await flutterBeacon.startBroadcast(BeaconBroadcast(
+      proximityUUID: uuidController,
+      major: int.tryParse(majorController) ?? 0,
+      minor: int.tryParse(minorController) ?? 0,
+    ));
+  }
+
 }
 
 Future<void> startScanUUID() async {
@@ -165,17 +211,35 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  bool broadcasting = false;
 
   //DataController controller = Get.find();
   DataController controller = Get.find();
 
-  
+  final covid = 'CB10023F-A318-3394-4199-A8730C7C1AE0';
+  // const influenza = 'CB10023F-A318-3394-4199-A8730C7C1001';
+  // const chickenpox = 'CB10023F-A318-3394-4199-A8730C7C1002';
+  // const healthy = 'CB10023F-A318-3394-4199-A8730C7C1AEC';
+
+  final uuidController = 'CB10023F-A318-3394-4199-A8730C7C1AE0';
+
   @override
   Widget build(BuildContext context) {
+
+    final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
+      onPrimary: Colors.white,
+      primary: broadcasting ? Colors.red : Theme.of(context).primaryColor,
+      minimumSize: Size(88, 36),
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(2)),
+      ),
+    );
+
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Service App'),
+          title: const Text('Contact Tracing'),
         ),
         body: Column(
           children: [
@@ -183,15 +247,40 @@ class _MyAppState extends State<MyApp> {
               onPressed: () async {
                 final SharedPreferences sp = await SharedPreferences.getInstance();
                 await sp.reload();
+                controller.major = sp.getString('nama').toString();
+                controller.minor = '-';
                 // print ('kandungan sharedPref: ${sp.getString('nama')}');
                 // print('Major: ${controller.major.toString()}');
               },
-              child: Text(controller.major.toString()),
+              child: const Text('Reset Exposure'),
             ),
             GetBuilder<DataController>(
               builder: (controller) {
-                return Text('Major: ${controller.major.toString()}');
+                return Text('Exposed to: ${controller.major.toString()}, ${controller.minor.toString()}');
               }
+            ),
+            ElevatedButton(
+              style: raisedButtonStyle,
+              onPressed: () async {
+                if (broadcasting) {
+                  await flutterBeacon.stopBroadcast();
+                } else {
+                  await flutterBeacon.startBroadcast(BeaconBroadcast(
+                    proximityUUID: uuidController,
+                    major: int.tryParse(controller.selfmajor.toString()) ?? 0,
+                    minor: int.tryParse(controller.selfminor.toString()) ?? 0,
+                  ));
+                }
+
+                final isBroadcasting = await flutterBeacon.isBroadcasting();
+
+                if (mounted) {
+                  setState(() {
+                    broadcasting = isBroadcasting;
+                  });
+                }
+              },
+              child: Text('${broadcasting ? '(INFECTED) - Click to be healthy' : '(HEALTHY) - click to be infected with covid'}'),
             )
           ],
         ),
