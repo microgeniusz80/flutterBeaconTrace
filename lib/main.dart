@@ -55,6 +55,29 @@ class DataController extends GetxController{
   String? selfmajor;
   String? selfminor;
 
+  List? listName;
+
+  var mySet = <String>{};
+
+  String _setData = '';
+  String get setData => _setData;
+  set setData (String data){
+    _setData = data;
+    update();
+  }
+
+  String listbeac (){
+    var ayat = '';
+    mySet.forEach((element) {
+      ayat = ayat + element + '\n';
+    });
+    return ayat;
+  }
+
+  clearbeac(){
+    mySet.clear();
+  }
+
   DataController(){
     selfmajor = random(1, 65535).toString();
     selfminor = random(1, 65535).toString();
@@ -187,6 +210,14 @@ Future<void> startScanUUID() async {
         controller.minor = result.beacons[0].minor.toString();
         controller.disease = result.beacons[0].proximityUUID.toString();
         await preferences.setString("nama", result.beacons[0].major.toString());
+
+        result.beacons.forEach((element) {
+          print('repeating list: ${element.major.toString()}');
+          var moment = '';
+          moment = element.major.toString() + '-' + element.minor.toString();
+          controller.mySet.add(moment);
+          moment = '';
+        });
       }
       
       _regionBeacons[result.region] = result.beacons;
@@ -242,13 +273,54 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Contact Tracing'),
         ),
         body: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(
+                child: Card(
+                  color: Colors.yellow,
+                  elevation: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'MySJ Trace',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold
+                              ),
+                            ),
+                            GetBuilder<DataController>(
+                              builder: (controller) {
+                                return Text(
+                                  '${controller.mySet.length.toString()} interactions today',
+                                );
+                              }
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                    ],
+                  ),
+                ),
+              ),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final SharedPreferences sp = await SharedPreferences.getInstance();
                 await sp.reload();
-                controller.major = sp.getString('nama').toString();
+                //controller.major = sp.getString('nama').toString();
+                print('content of set: ${controller.mySet}');
+                controller.major = '-';
                 controller.minor = '-';
+                controller.clearbeac();
                 // print ('kandungan sharedPref: ${sp.getString('nama')}');
                 // print('Major: ${controller.major.toString()}');
               },
@@ -256,7 +328,13 @@ class _MyAppState extends State<MyApp> {
             ),
             GetBuilder<DataController>(
               builder: (controller) {
-                return Text('Exposed to: ${controller.major.toString()}, ${controller.minor.toString()}');
+                //return Text('Exposed to: ${controller.major.toString()}-${controller.minor.toString()}');
+                return const Text('Exposed to:'); 
+              }
+            ),
+            GetBuilder<DataController>(
+              builder: (controller) {
+                return Text(controller.listbeac());
               }
             ),
             ElevatedButton(
